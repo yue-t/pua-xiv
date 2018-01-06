@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='UTF-8'>
+<title>Unicode XIV</title>
+<style>
+@font-face {
+  font-family: 'PuaXiv';
+  font-style: monospace;
+  src: url(PuaXiv.woff);
+}
+#input {
+}
+#output {
+  background-color: #cccccc;
+  min-height: 5em;
+  font-family: PuaXiv, monospace;
+  padding: 0.5em;
+  font-size: 1.5em;
+}
+#altinput {
+  border-collapse: collapse;
+}
+#altinput th, #altinput td {
+  font-family: monospace;
+  margin: 0;
+  padding: 0.1em 0.5em;
+}
+#altinput th {
+  font-weight: bold;
+  border-right: solid 1px;
+}
+#altinput td:hover {
+  background-color: #cccccc;
+}
+.preview {
+  font-family: PuaXiv, monospace;
+  text-align: center;
+  font-size: 1.5em;
+}
+</style>
+<script>
+function cp(ch) {
+  return ch.codePointAt(0);
+}
+function replaceBasic(str) {
+  var ret = "";
+  for (var i = 0; i < str.length; i++) {
+    var ch = str.codePointAt(i)
+
+    // '?' at e070
+    if (ch == cp('?')) ch = 0xe070;
+
+    // A-Z contiguous from e071 to e08a
+    if (cp('a') <= ch && ch <= cp('z')) ch += 0xe071 - cp('a');
+    if (cp('A') <= ch && ch <= cp('Z')) ch += 0xe071 - cp('A');
+
+    // 0-9 contiguous from e08f to e098
+    if (cp('0') <= ch && ch <= cp('9')) ch += 0xe08f - cp('0');
+
+    ret += String.fromCodePoint(ch);
+  }
+  return ret;
+}
+function replaceEscapeSeq(str) {
+  var ret = "";
+  var remaining = str;
+  var i = -1;
+  while (i = remaining.search(/\\u[0-9a-fA-F]/), i >= 0) {
+    var hex2num = parseInt(remaining.substring(i+2,i+6), 16);
+    ret += remaining.substring(0, i);
+    if (0xe000 <= hex2num && hex2num <= 0xe0ef) {
+      ret += String.fromCodePoint(hex2num);
+    } else {
+      ret += remaining.substring(i, i+6);
+    }
+    remaining = remaining.substring(i+6, remaining.length);
+  }
+  ret += remaining;
+  return ret;
+}
+function replaceWideSpace(str) {
+  return str.replace(/ /g, String.fromCodePoint(0x3000));  // U+3000 IDEOGRAPHIC SPACE
+}
+function update() {
+  var input = document.getElementById("input");
+  var output = document.getElementById("output");
+  var wantWideSpace = document.getElementById("opt_widespace");
+
+  var str = input.value;
+  str = replaceEscapeSeq(str);
+  str = replaceBasic(str);
+  if (wantWideSpace.checked) str = replaceWideSpace(str);
+  output.textContent = str;
+}
+function mk_table_cb(i) {
+  return function() {
+    var input = document.getElementById("input");
+    input.value += "\\u" + i.toString(16);
+    update();
+  }
+}
+function filltable() {
+  altinput = document.getElementById("altinput");
+  var row;
+  for (row = 0xe00; row <= 0xe0e; row++) {
+    var newrow = altinput.insertRow(-1);
+    var headcell = document.createElement("th");
+    newrow.appendChild(headcell);
+    headcell.textContent = "U+" + row.toString(16) + "_";
+    for (code = row * 16; code < (row + 1) * 16; code++) {
+      var newcell = newrow.insertCell(-1);
+      newcell.textContent = code.toString(16);
+      newcell.onclick = mk_table_cb(code);
+      var preview = document.createElement("div");
+      preview.classList.add("preview");
+      preview.textContent = String.fromCharCode(code);
+      newcell.appendChild(preview);
+    }
+  }
+}
+</script>
+</head>
+<body onload="update();filltable();">
+
+
+<h1>Unicode Private Use Area (U+E000) XIV</h1>
+
+<p>Enter text and copy the resulting output.</p>
+<p>Characters that will be auto-converted:</p>
+<ul>
+<li>Letters A-Z case insensitive</li>
+<li>Digits 0-9</li>
+</ul>
+<p>Codepoint literals are formatted like \uE020 restricted to the range E000 - E0EF
+(or just click from the table below)</p>
+
+<textarea id="input" rows="5" cols="100" oninput="update();">Hello, world\uE03C!</textarea>
+
+<div id="optionarea">
+<label><input type="checkbox" id="opt_widespace" onclick="update();">Wide Spaces</label>
+</div>
+
+<p>Display of the output depends on browser font support (tested on Chrome and Firefox for Windows).</p>
+<p>It's just for visual assistance and does not directly affect what will appear in-game.</p>
+<pre id="output"></pre>
+
+<p>Click a table cell to append the corresponding codepoint to the input</p>
+<table id="altinput"></table>
+
+</body>
+</html>
